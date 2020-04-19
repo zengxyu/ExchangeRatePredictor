@@ -1,7 +1,11 @@
 package org.example.model;
 
+import org.deeplearning4j.api.storage.StatsStorage;
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
 import org.deeplearning4j.optimize.listeners.ScoreIterationListener;
+import org.deeplearning4j.ui.api.UIServer;
+import org.deeplearning4j.ui.stats.StatsListener;
+import org.deeplearning4j.ui.storage.InMemoryStatsStorage;
 import org.deeplearning4j.util.ModelSerializer;
 import org.example.util.Constant;
 import org.example.util.PlotLine;
@@ -32,18 +36,31 @@ public class Train {
      * 训练模型，并保存
      */
     public static MultiLayerNetwork trainModel(String trainFilePath) throws IOException, InterruptedException {
+
+
+        //初始化用户界面后端
+        UIServer uiServer = UIServer.getInstance();
+
+        //设置网络信息（随时间变化的梯度、分值等）的存储位置。这里将其存储于内存。
+        StatsStorage statsStorage = new InMemoryStatsStorage();         //或者： new FileStatsStorage(File)，用于后续的保存和载入
+
+        //将StatsStorage实例连接至用户界面，让StatsStorage的内容能够被可视化
+        uiServer.attach(statsStorage);
+
+
         //迭代次数
-        int numEpoch = 20;
+        int numEpoch = 40;
         //获取训练数据和测试数据
         MultiDataSetIterator trainIterator = RateDataReader.readDataset(trainFilePath, Constant.TRAIN_BATCH_SIZE);
 
         //开始训练
         log.info("Initialize nn model...");
-        MultiLayerNetwork model = new MultiLayerNetwork(FeedForwardNN.getDeepDenseLayerNetworkConfiguration());
+        MultiLayerNetwork model = new MultiLayerNetwork(FeedForwardNN.getDeepDenseLayerNetworkConfiguration1());
         model.init();
 
         log.info("Start training...");
-        model.setListeners(new ScoreIterationListener(1));
+        model.setListeners(new ScoreIterationListener(1),new StatsListener(statsStorage));
+        //然后添加StatsListener来在网络定型时收集这些信息
         model.fit(trainIterator, numEpoch);
         log.info("Finish training...");
 
@@ -53,8 +70,8 @@ public class Train {
     /**
      * 评估模型
      */
-    public static Map<String, List> testModel(MultiLayerNetwork model, String testFilePath, double mean) throws IOException, InterruptedException, ParseException {
-        Map<String, List> hashMap = new HashMap<>();
+    public static Map<String, Object> testModel(MultiLayerNetwork model, String testFilePath, double mean) throws IOException, InterruptedException, ParseException {
+        Map<String, Object> hashMap = new HashMap<>();
         MultiDataSetIterator testIterator = RateDataReader.readDataset(testFilePath, Constant.TEST_BATCH_SIZE);
         MultiDataSetIterator dateIterator = RateDataReader.readDateDataset(testFilePath,Constant.TEST_BATCH_SIZE);
 
@@ -79,9 +96,9 @@ public class Train {
             log.info("Prediction Result:" + String.valueOf(predictedLabel));
             log.info("================================");
         }
-        hashMap.put(Constant.DATE,dateList);
-        hashMap.put(Constant.REAL_LABELS, realLabels);
-        hashMap.put(Constant.PREDICTED_LABELS, predictedLabels);
+        hashMap.put(Constant.PLOT_DATE_LIST,dateList);
+        hashMap.put(Constant.PLOT_REAL_LABEL_LIST, realLabels);
+        hashMap.put(Constant.PLOT_PREDICTED_LABEL_LIST, predictedLabels);
         return hashMap;
     }
 
@@ -100,33 +117,12 @@ public class Train {
 
     /**
      * 可视化数据（比较模型预测值与真实值）
-     * 散点图
-     *
-     * @param title
-     * @param realLabels
-     * @param predictedLabels
-     */
-    public static void plotScatter(String title, List<Double> realLabels, List<Double> predictedLabels) {
-        SwingUtilities.invokeLater(() -> {
-            PlotScatter example = new PlotScatter(title, realLabels, predictedLabels);
-            example.setSize(800, 400);
-            example.setLocationRelativeTo(null);
-            example.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
-            example.setVisible(true);
-        });
-    }
-
-    /**
-     * 可视化数据（比较模型预测值与真实值）
      * 线
-     *
-     * @param title
-     * @param realLabels
-     * @param predictedLabels
+     * @param  map
      */
-    public static void plotLine(String title, List<Long> dateList, List<Double> realLabels, List<Double> predictedLabels) {
+    public static void plotLine(Map<String,Object> map,boolean predict) {
         SwingUtilities.invokeLater(() -> {
-            PlotLine example = new PlotLine(title, dateList, realLabels, predictedLabels);
+            PlotLine example = new PlotLine(map,predict);
             example.setSize(800, 400);
             example.setLocationRelativeTo(null);
             example.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
@@ -150,19 +146,12 @@ public class Train {
             //保存模型
             saveModel(model, savePath);
             //评估模型，返回真实标签和预测标签
-            Map<String, List> hashMap = testModel(model, FNames[i * 3 + 1], mean);
+            Map<String, Object> hashMap = testModel(model, FNames[i * 3 + 1], mean);
             //画图可视化真实标签和预测标签
-            plotLine(currency[i], hashMap.get(Constant.DATE), hashMap.get(Constant.REAL_LABELS), hashMap.get(Constant.PREDICTED_LABELS));
+            String title = Constant.CURRENCY[i] + "Comparison chart : Real Labels VS Predicted Labels";
+            hashMap.put(Constant.PLOT_TITLE,title);
+            plotLine(hashMap,true);
         }
-
-
-        //Initialize the user interface backend
-//        UIServer uiServer = UIServer.getInstance();
-
-        //Configure where the network information (gradients, activations, score vs. time etc) is to be stored
-        //Then add the StatsListener to collect this information from the network, as it trains
-//        StatsStorage statsStorage = new FileStatsStorage(new File(System.getProperty("java.io.tmpdir"), "ui-stats.dl4j"));
-
 
     }
 

@@ -41,24 +41,72 @@ public class PlotLine extends JFrame {
         allLabels.addAll(predictedLabels);
         Double min = allLabels.stream().mapToDouble(val -> val).min().orElse(0.0);
         Double max = allLabels.stream().mapToDouble(val -> val).max().orElse(0.0);
-        map.put(Constant.MIN, min - 0.05);
-        map.put(Constant.MAX, max + 0.05);
+        map.put(Constant.MIN, min - 0.1);
+        map.put(Constant.MAX, max + 0.1);
         return map;
     }
 
-    public PlotLine(String title, List<Long> dateList, List<Double> realLabels, List<Double> predictedLabels) {
+    /**
+     * 重载上面方法
+     *
+     * @param predictedLabels
+     * @return
+     */
 
-        // Create dataset
-        XYDataset dataset = createDataset(dateList, realLabels, predictedLabels);
-        String t = title + " Comparison chart : Real Labels VS Predicted Labels";
+    private Map<String, Double> getRange(List<Double> predictedLabels) {
+        Map<String, Double> map = new HashMap<>();
+        //找到这两个集合中的最大值和最小值
+        Double min = predictedLabels.stream().mapToDouble(val -> val).min().orElse(0.0);
+        Double max = predictedLabels.stream().mapToDouble(val -> val).max().orElse(0.0);
+        map.put(Constant.MIN, min - 0.1);
+        map.put(Constant.MAX, max + 0.1);
+        return map;
+    }
+
+    public PlotLine(Map<String, Object> map, boolean train) {
+        //需要显示的数据
+        String title = "";
+        List<Long> dateList = null;
+        List<Double> realLabelList = null;
+        List<Double> predictedLabelList = null;
+
+        // Create dataset 画图参数
+        XYDataset dataset = null;
+        Map<String, Double> rangeMap = null;
+        String xAxisTitle = "Date";
+
+        if (train) {
+            //在训练或测试时，需要显示真实标签和预测标签
+            title = (String) map.get(Constant.PLOT_TITLE);
+            //获取日期list
+            dateList = (List<Long>) map.get(Constant.PLOT_DATE_LIST);
+            //获取预测标签list
+            predictedLabelList = (List<Double>) map.get(Constant.PLOT_PREDICTED_LABEL_LIST);
+            //获取真实标签list
+            realLabelList = (List<Double>) map.get(Constant.PLOT_REAL_LABEL_LIST);
+            //获取y轴range的范围
+            rangeMap = getRange(realLabelList, predictedLabelList);
+            //获取x轴title
+            xAxisTitle += new Date(dateList.get(0));
+            //创建表
+            dataset = createDataset(realLabelList, predictedLabelList);
+        } else {
+            //在预测时，只显示预测标签
+            title = (String) map.get(Constant.PLOT_TITLE);
+            //获取预测标签list
+            predictedLabelList = (List<Double>) map.get(Constant.PLOT_PREDICTED_LABEL_LIST);
+            //获取y轴range的范围
+            rangeMap = getRange(predictedLabelList);
+            //创建表
+            dataset = createDataset(predictedLabelList);
+        }
         // Create chart
         JFreeChart chart = ChartFactory.createXYLineChart(
-                t, "Date from ( " + new Date(dateList.get(0)) + " )", "Exchange rate", dataset, PlotOrientation.VERTICAL, true, true, true);
+                title, xAxisTitle, "Exchange rate", dataset, PlotOrientation.VERTICAL, true, true, true);
         //Changes background color
         XYPlot plot = (XYPlot) chart.getPlot();
         plot.setBackgroundPaint(new Color(255, 255, 255));
 
-        Map<String, Double> rangeMap = getRange(realLabels, predictedLabels);
 
         NumberAxis domain = (NumberAxis) plot.getRangeAxis();
         domain.setRange(rangeMap.get(Constant.MIN), rangeMap.get(Constant.MAX));
@@ -67,22 +115,32 @@ public class PlotLine extends JFrame {
         setContentPane(panel);
     }
 
+    private XYDataset createDataset(List<Double> predictedLabels) {
+        XYSeriesCollection dataset = new XYSeriesCollection();
 
-    private XYDataset createDataset(List<Long> dateList, List<Double> realLabels, List<Double> predictedLabels) {
+        XYSeries series2 = new XYSeries("Predicted Labels");
+        //RealLabels
+        for (int i = 0; i < predictedLabels.size(); i++) {
+            series2.add(i, predictedLabels.get(i));
+        }
+        dataset.addSeries(series2);
+        return dataset;
+    }
+
+    private XYDataset createDataset(List<Double> predictedLabels, List<Double> realLabels) {
         XYSeriesCollection dataset = new XYSeriesCollection();
         XYSeries series1 = new XYSeries("Real labels");
         //RealLabels
         for (int i = 0; i < realLabels.size(); i++) {
             series1.add(i, realLabels.get(i));
         }
+        dataset.addSeries(series1);
         XYSeries series2 = new XYSeries("Predicted Labels");
         //RealLabels
         for (int i = 0; i < predictedLabels.size(); i++) {
             series2.add(i, predictedLabels.get(i));
         }
-        dataset.addSeries(series1);
         dataset.addSeries(series2);
-
         return dataset;
     }
 

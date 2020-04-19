@@ -8,16 +8,17 @@ import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.api.ops.impl.shape.Concat;
 import org.nd4j.linalg.dataset.api.MultiDataSet;
 import org.nd4j.linalg.dataset.api.iterator.MultiDataSetIterator;
+import org.nd4j.linalg.factory.Nd4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.swing.*;
 import java.io.IOException;
+import java.lang.reflect.Array;
 import java.text.ParseException;
-import java.util.ArrayList;
-import java.util.Currency;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
+
+import static org.example.util.Constant.CURRENCY;
 
 public class Predict {
     private static final Logger log = LoggerFactory.getLogger(Predict.class);
@@ -34,13 +35,11 @@ public class Predict {
      * 可视化数据（比较模型预测值与真实值）
      * 线
      *
-     * @param title
-     * @param realLabels
-     * @param predictedLabels
+     * @param map
      */
-    public static void plotLine(String title, List<Long> dateList, List<Double> realLabels, List<Double> predictedLabels) {
+    public static void plotLine(Map<String, Object> map, boolean predict) {
         SwingUtilities.invokeLater(() -> {
-            PlotLine example = new PlotLine(title, dateList, realLabels, predictedLabels);
+            PlotLine example = new PlotLine(map, predict);
             example.setSize(800, 400);
             example.setLocationRelativeTo(null);
             example.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
@@ -48,68 +47,71 @@ public class Predict {
         });
     }
 
-    public static void main(String[] args) throws IOException, InterruptedException, ParseException {
-        for (int i = 0; i < Constant.CURRENCY.length; i++) {
-            String modelPath = Constant.MODEL_BASE_DIR + "/" + Constant.MODEL_SAVE_PATH_Prefix + Constant.CURRENCY[i] + ".zip";
+    /**
+     * 根据输入数据获取规范化的特征
+     * @param inputRates
+     * @param mean
+     * @return
+     */
 
-            log.info("...开始加载模型" + modelPath + "...");
-            MultiLayerNetwork model = loadModel(modelPath);
-            MultiDataSetIterator predictIterator = RateDataReader.readDataset(Constant.FNames[3 * i + 2], Constant.TEST_BATCH_SIZE);;
-            MultiDataSetIterator dateIterator = RateDataReader.readDateDataset(Constant.FNames[3 * i + 2],Constant.TEST_BATCH_SIZE);
-            log.info("...完成加载模型...");
-            //输入数据
-            log.info("...输入数据...");
-            List<Double> realLabels = new ArrayList<>();
-            List<Double> predictedLabels = new ArrayList<>();
-            //预测一条数据
-            if (predictIterator.hasNext()) {
-                MultiDataSet dataSet = predictIterator.next();
-                MultiDataSet dSet = dateIterator.next();
-                INDArray feature = dataSet.getFeatures()[0];
-                INDArray dateArray = dSet.getLabels()[0];
-                INDArray realLabel = dataSet.getLabels()[0];
-                INDArray predictedLabel = model.output(feature, false);
+    public static INDArray getFeatures(double[][] inputRates, double mean) {
+        if (inputRates[0].length != Constant.N) {
+            log.error("您输入的数据个数与模型输入单元数量N不一致，请检查是否N=" + Constant.N + "个");
+        }
+        //normalize
+        for (int i = 0; i < inputRates[0].length; i++) {
+            inputRates[0][i] -= mean;
+        }
+        INDArray feature = Nd4j.create(inputRates);
+        return feature;
+    }
 
-                List<Long> dateList = INDLongArray2List(dateArray);
-                List<Double> realLabelList = INDDoubleArray2List(realLabel);
-                List<Double> predictedLabelList = INDDoubleArray2List(predictedLabel);
-                Double mean = PreprocessData.getInstance().getMeanList().get(i);
-                unNormaliseList(realLabelList,mean);
-                unNormaliseList(predictedLabelList,mean);
-                log.info("Features:" + feature.toString());
-                log.info("Real Result:" + String.valueOf(realLabelList));
-                log.info("Prediction Result:" + String.valueOf(predictedLabelList));
-                plotLine(Constant.CURRENCY[i], dateList, realLabelList, predictedLabelList);
-                log.info("================================");
+    public static void main(String[] args) throws IOException {
+        //输入数据
+        double[][] inputRates = new double[][]{{6.1104, 6.1126, 6.1158, 6.1155, 6.1169}};
+        //输入货币类型： 美元-0, 欧元-1, 英镑-2
+        int currencyType = 0;
+        //============================================================================
+        String modelPath = Constant.MODEL_BASE_DIR + "/" + Constant.MODEL_SAVE_PATH_Prefix + Constant.CURRENCY[currencyType] + ".zip";
+        log.info("================预测程序================");
+        log.info("...您的输入为:" + Arrays.toString(inputRates[0]) + ";汇率类型为:" + CURRENCY[currencyType]);
+        log.info("...开始加载模型" + modelPath + "...");
+        MultiLayerNetwork model = loadModel(modelPath);
+        log.info("...完成加载模型...");
+
+        log.info("...开始预测...");
+        double mean = PreprocessData.getInstance().getMeanList().get(currencyType);
+        INDArray feature = getFeatures(inputRates, mean);
+        INDArray predictedLabelArray = model.output(feature, false);
+        List<Double> predictedLabelList = unNormaliseList(predictedLabelArray, mean);
+        log.info("...Features:" + feature.toString());
+        log.info("...Prediction Result:" + predictedLabelList);
+        //表格的title
+        String title = "Predict the exchange rate of " + Constant.CURRENCY[currencyType] + " in " + Constant.M + " days";
+        Map<String, Object> map = new HashMap<>();
+        map.put(Constant.PLOT_TITLE, title);
+        map.put(Constant.PLOT_PREDICTED_LABEL_LIST, predictedLabelList);
+        plotLine(map, false);
+        log.info("...结束预测...");
+
+    }
+
+    /**
+     * 去规范化
+     *
+     * @param predictedLabelArray
+     * @param mean
+     * @return
+     */
+    public static List<Double> unNormaliseList(INDArray predictedLabelArray, Double mean) {
+        List<Double> unNormalisedList = new ArrayList<>();
+        for (int i = 0; i < predictedLabelArray.rows(); i++) {
+            for (int j = 0; j < predictedLabelArray.columns(); j++) {
+                unNormalisedList.add(predictedLabelArray.getDouble(0, j) + mean);
             }
-            log.info("...开始预测...");
         }
+        return unNormalisedList;
     }
 
-    public static void unNormaliseList(List<Double> predictedLabelList, Double mean) {
-        for (int i = 0; i < predictedLabelList.size(); i++) {
-            predictedLabelList.set(i,predictedLabelList.get(i)+mean);
-        }
-    }
-
-    public static List<Long> INDLongArray2List(INDArray array) {
-        List<Long> list = new ArrayList<>();
-        for (int i = 0; i < array.rows(); i++) {
-            for (int j = 0; j < array.columns(); j++) {
-                list.add(array.getLong(i, j));
-            }
-        }
-        return list;
-    }
-
-    public static List<Double> INDDoubleArray2List(INDArray array) {
-        List<Double> list = new ArrayList<>();
-        for (int i = 0; i < array.rows(); i++) {
-            for (int j = 0; j < array.columns(); j++) {
-                list.add(array.getDouble(i, j));
-            }
-        }
-        return list;
-    }
 
 }
