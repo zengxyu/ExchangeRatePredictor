@@ -113,11 +113,6 @@ public class PreprocessData {
         return date;
     }
 
-//    public long date2Time(Date date){
-//        long millis = date.getTime();
-//        System.out.println(millis);
-//    }
-
 
     /**
      * 用于规范数据，所有数据均减去其平均值
@@ -152,7 +147,7 @@ public class PreprocessData {
         // 第2.2 处理测试集
         processTrainTestDataSet(splitMap.get(Constant.SPLIT_KEY[1]), false);
         // 第2.3 处理预测集
-        processPredictDataSet(splitMap.get(Constant.SPLIT_KEY[2]));
+//        processPredictDataSet(splitMap.get(Constant.SPLIT_KEY[2]));
     }
 
     /**

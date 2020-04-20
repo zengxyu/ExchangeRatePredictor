@@ -10,7 +10,7 @@ public class Constant {
     public static final int N = 5;
     public static final int M = 5;
     //训练集与测试集比例为7:2:1
-    public static final double RATIO_TRAIN = 0.7;
+    public static final double RATIO_TRAIN = 0.8;
     public static final double RATIO_TEST = 0.2;
 
     //Base directory

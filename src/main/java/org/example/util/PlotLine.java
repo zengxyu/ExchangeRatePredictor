@@ -1,6 +1,7 @@
 package org.example.util;
 
 import java.awt.Color;
+import java.io.File;
 import java.util.*;
 
 import javax.swing.JFrame;
@@ -9,6 +10,7 @@ import javax.swing.WindowConstants;
 
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
+import org.jfree.chart.ChartUtilities;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.axis.DateAxis;
 import org.jfree.chart.axis.NumberAxis;
