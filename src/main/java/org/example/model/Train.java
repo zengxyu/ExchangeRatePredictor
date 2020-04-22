@@ -92,8 +92,8 @@ public class Train {
             predictedLabels.add(predictedLabel);
 
             log.info("Features:" + feature.toString());
-            log.info("Real Result:" + String.valueOf(realLabel));
-            log.info("Prediction Result:" + String.valueOf(predictedLabel));
+            log.info("Real Result:" + realLabel);
+            log.info("Prediction Result:" + predictedLabel);
             log.info("================================");
         }
         hashMap.put(Constant.PLOT_DATE_LIST,dateList);

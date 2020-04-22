@@ -14,6 +14,7 @@ import org.jfree.chart.ChartUtilities;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.axis.DateAxis;
 import org.jfree.chart.axis.NumberAxis;
+import org.jfree.chart.axis.ValueAxis;
 import org.jfree.chart.plot.PlotOrientation;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.data.time.Day;
@@ -75,7 +76,8 @@ public class PlotLine extends JFrame {
         // Create dataset 画图参数
         XYDataset dataset = null;
         Map<String, Double> rangeMap = null;
-        String xAxisTitle = "Date";
+        String xAxisTitle = "";
+
 
         if (train) {
             //在训练或测试时，需要显示真实标签和预测标签
@@ -89,6 +91,7 @@ public class PlotLine extends JFrame {
             //获取y轴range的范围
             rangeMap = getRange(realLabelList, predictedLabelList);
             //获取x轴title
+            xAxisTitle = "Days from ";
             xAxisTitle += new Date(dateList.get(0));
             //创建表
             dataset = createDataset(realLabelList, predictedLabelList);
@@ -101,17 +104,21 @@ public class PlotLine extends JFrame {
             rangeMap = getRange(predictedLabelList);
             //创建表
             dataset = createDataset(predictedLabelList);
+            xAxisTitle = "Days";
         }
+
         // Create chart
         JFreeChart chart = ChartFactory.createXYLineChart(
                 title, xAxisTitle, "Exchange rate", dataset, PlotOrientation.VERTICAL, true, true, true);
         //Changes background color
         XYPlot plot = (XYPlot) chart.getPlot();
         plot.setBackgroundPaint(new Color(255, 255, 255));
+        NumberAxis domainAxis = (NumberAxis) plot.getDomainAxis();
+        domainAxis.setAutoTickUnitSelection(train);
 
+        NumberAxis rangeAxis = (NumberAxis) plot.getRangeAxis();
+        rangeAxis.setRange(rangeMap.get(Constant.MIN), rangeMap.get(Constant.MAX));
 
-        NumberAxis domain = (NumberAxis) plot.getRangeAxis();
-        domain.setRange(rangeMap.get(Constant.MIN), rangeMap.get(Constant.MAX));
         // Create Panel
         ChartPanel panel = new ChartPanel(chart);
         setContentPane(panel);
@@ -122,8 +129,8 @@ public class PlotLine extends JFrame {
 
         XYSeries series2 = new XYSeries("Predicted Labels");
         //RealLabels
-        for (int i = 0; i < predictedLabels.size(); i++) {
-            series2.add(i, predictedLabels.get(i));
+        for (int i = 1; i <= predictedLabels.size(); i++) {
+            series2.add(i, predictedLabels.get(i-1));
         }
         dataset.addSeries(series2);
         return dataset;
@@ -142,11 +149,9 @@ public class PlotLine extends JFrame {
         for (int i = 0; i < predictedLabels.size(); i++) {
             series2.add(i, predictedLabels.get(i));
         }
+
         dataset.addSeries(series2);
         return dataset;
     }
 
-    public static void main(String[] args) {
-
-    }
 }

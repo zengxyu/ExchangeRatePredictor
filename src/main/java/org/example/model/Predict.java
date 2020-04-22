@@ -72,6 +72,8 @@ public class Predict {
         double[][] inputRates = new double[][]{{}};
         //输入货币类型： 美元-0, 欧元-1, 英镑-2
         Integer currencyType = 0;
+        //从哪天开始
+        String date = "";
 
         //输入数据
         String fileName = "predict_data.csv";
