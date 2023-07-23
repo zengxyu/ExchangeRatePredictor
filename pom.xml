@@ -16,7 +16,7 @@
         <datavec.version>1.0.0-beta6</datavec.version>
         <arbiter.version>1.0.0-beta6</arbiter.version>
         <rl4j.version>1.0.0-beta6</rl4j.version>
-        <logback.version>1.1.7</logback.version>
+        <logback.version>1.2.0</logback.version>
         <jfreechart.version>1.0.13</jfreechart.version>
         <jcommon.version>1.0.23</jcommon.version>
         <maven-compiler-plugin.version>3.6.1</maven-compiler-plugin.version>
